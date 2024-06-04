@@ -3,16 +3,15 @@ pipeline {
 
     environment {
         DOCKER_COMPOSE = 'docker-compose.yaml'
-        DOCKER_IMAGE_NAME = 'dalila854/app-web-group1'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/dolydev/app-web-group1.git'
+                // Cloner le dépôt de votre code source
+                git branch: 'main', url: 'https://github.com/dolydev/projet-devops-greta78.git'
             }
         }
-
         stage('OWASP Dependency Check') {
             steps {
                 script {
@@ -30,41 +29,49 @@ pipeline {
             }
         }
 
-        stage("Docker Build & Push") {
+         stage('Build') {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
-                        sh "docker build -t $DOCKER_IMAGE_NAME ."
-                        sh "docker push $DOCKER_IMAGE_NAME:latest"
-                    }
+                    // Construire les images Docker définies dans le fichier docker-compose.yml
+                    sh 'docker-compose -f $DOCKER_COMPOSE build'
                 }
             }
         }
 
-        stage("TRIVY Image Scan") {
+        stage('Deploy') {
             steps {
                 script {
-                    sh "trivy image $DOCKER_IMAGE_NAME:latest > trivy.txt"
+                    // Déployer les conteneurs Docker en arrière-plan
+                    sh 'docker-compose -f $DOCKER_COMPOSE up -d'
                 }
             }
         }
-     
-          stage('Deploy') {
-            steps {
-                sh 'docker-compose -f $DOCKER_COMPOSE up -d'
-            }
-        }
-        
-        stage('Test Deployment') {
+
+        stage('Test') {
             steps {
                 script {
-                    // Attendre que les services soient prêts
+                    // Ajoutez ici vos scripts de test
+                    // Par exemple, vous pouvez exécuter des tests HTTP pour vérifier que le serveur web est en cours d'exécution
+                    sh '''
+                    echo "Waiting for services to be ready..."
                     sleep 30
-
-                    // Test du conteneur déployé
-                    sh 'curl -v http://localhost:8000'
+                    echo "Testing PHP container..."
+                    curl -f http://localhost:8000 || exit 1
+                    echo "Testing phpMyAdmin..."
+                    curl -f http://localhost:8899 || exit 1
+                    echo "Testing Prometheus..."
+                    curl -f http://localhost:9090 || exit 1
+                    echo "Testing Grafana..."
+                    curl -f http://localhost:3000 || exit 1
+                    '''
                 }
             }
         }
+
+     
     }
+
+
 }
+        
+        
