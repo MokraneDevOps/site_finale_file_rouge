@@ -1,0 +1,15 @@
+#!/bin/bash
+
+echo "Nom : $0"
+
+echo "Téléchargement de l'image sur le nœud principal..."
+docker pull mokrane921/site-gretops:latest || { echo "Échec du téléchargement de l'image"; exit 1; }
+
+echo "Téléchargement de l'image sur 192.168.198.152..."
+ssh -o StrictHostKeyChecking=no user@192.168.198.152 "docker pull mokrane921/site-gretops:latest" || { echo "Échec du téléchargement de l'image sur 192.168.198.152"; exit 1; }
+
+echo "Création du service Docker..."
+docker service create --name site-greta --replicas 1 --publish 8000:80 mokrane921/site-gretops:latest || { echo "Échec de la création du service"; exit 1; }
+
+echo "Vérification de l'image sur tous les nœuds..."
+docker service ps site-greta || { echo "Échec de la vérification du service"; exit 1; }
